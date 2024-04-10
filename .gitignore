@@ -2,6 +2,10 @@ Project_Description.pdf
 corona-out-2.json
 corona-out-3.json
 .DS_Store
+project_key.json
+retweets.csv
+tweets.csv
+X_write_data_stream.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
