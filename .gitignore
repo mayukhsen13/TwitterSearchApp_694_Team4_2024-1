@@ -7,6 +7,9 @@ retweets.csv
 tweets.csv
 X_write_data_stream.ipynb
 scratch.ipynb
+mongo_users.ipynb
+mongo_uri.txt
+users.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
