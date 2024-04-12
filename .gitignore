@@ -6,6 +6,7 @@ project_key.json
 retweets.csv
 tweets.csv
 X_write_data_stream.ipynb
+scratch.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
