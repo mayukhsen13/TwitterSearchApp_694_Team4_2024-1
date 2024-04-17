@@ -2,8 +2,11 @@
 import pymongo
 from pymongo import MongoClient
 import re
+import heapq
+import time
+import pickle
 
-class SearchInMongoDB:
+class SearchInMongoDB:  ##Mayukh Sen 
     def __init__(self, uri, collection_name):
         self.client = MongoClient(uri)
         self.db = self.client["twitter_database"]
@@ -44,7 +47,7 @@ class SearchInMongoDB:
 
 
 ############################################################################################################################################################################
-class SearchCache:
+class SearchCache: ##Divya Shah
     def __init__(self, max_size=35):
         self.max_size = max_size
         self.heap = []
@@ -80,3 +83,178 @@ class SearchCache:
                 heapq.heapify(self.heap)
         except FileNotFoundError:
             print("Cache file not found. Starting with an empty cache.")
+
+############################################################################################################################################################################
+
+class SearchTweets: ## Max Jacobs
+    def string_search(words, choice_and_or, date_and_or, range_choice, time_and_or, time_choice):
+    #Search By Text
+        if choice_and_or == "AND":
+            text_where_clause = "AND ".join([f"text LIKE '% {word} %'" for word in words])
+        elif choice_and_or == "OR":
+            text_where_clause = "OR ".join([f"text LIKE '% {word} %'" for word in words])
+        else: 
+            text_where_clause = (f"text LIKE '% {words} %'")
+        
+        if date_and_or == "AND RANGE" or date_and_or == "SINGLE RANGE":
+            date_where_clause = "AND ".join([f"DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in range_choice])
+        elif date_and_or == "OR RANGE":
+            date_where_clause = "OR ".join([f"DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in range_choice])
+        else: 
+            date_where_clause = f"DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {range_choice}"
+
+        if time_and_or == "AND RANGE" or time_and_or == "SINGLE RANGE":
+            time_where_clause = "AND ".join([f"TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in time_choice])
+        elif time_and_or == "OR RANGE":
+            time_where_clause = "OR ".join([f"TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in time_choice])
+        else: 
+            time_where_clause = f"TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {time_choice}"
+
+
+        where_clauses = [text_where_clause]
+
+        if range_choice:
+            where_clauses.append(date_where_clause)
+
+        if time_choice:
+            where_clauses.append(time_where_clause)
+
+        if len(where_clauses) > 1:
+            where_clause = " AND ".join(where_clauses)
+        else:
+            where_clause = text_where_clause
+
+
+        sql_query = f"""
+        SELECT 
+            text, 
+            retweet_count, 
+            DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) AS date,
+            TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) AS time,
+            id_str_user, 
+            id_str_tweet
+        FROM `msds-417117.Tweets.Tweets`
+        WHERE {where_clause}
+        ORDER BY retweet_count DESC
+        """
+
+        query = client.query(sql_query)
+        result = query.to_dataframe()
+
+        return result
+
+    ## Search Tweets by Hashtags
+    def hashtag_search(hashtags, choice_and_or, date_and_or, range_choice, time_and_or, time_choice):
+    
+        if choice_and_or == "AND":
+            hashtag_where_clause = "AND ".join([f"text LIKE '% {hashtag} %'" for hashtag in hashtags])
+        elif choice_and_or == "OR":
+            hashtag_where_clause = "OR ".join([f"text LIKE '% {hashtag} %'" for hashtag in hashtags])
+        else: 
+            hashtag_where_clause = (f"text LIKE '% {hashtags} %'")
+        
+        if date_and_or == "AND RANGE" or date_and_or == "SINGLE RANGE":
+            date_where_clause = "AND ".join([f"DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in range_choice])
+        elif date_and_or == "OR RANGE":
+            date_where_clause = "OR ".join([f"DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in range_choice])
+        else: 
+            date_where_clause = f"DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {range_choice}"
+
+        if time_and_or == "AND RANGE" or time_and_or == "SINGLE RANGE":
+            time_where_clause = "AND ".join([f"TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in time_choice])
+        elif time_and_or == "OR RANGE":
+            time_where_clause = "OR ".join([f"TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in time_choice])
+        else: 
+            time_where_clause = f"TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {time_choice}"
+
+
+        where_clauses = [hashtag_where_clause]
+
+        if range_choice:
+            where_clauses.append(date_where_clause)
+
+        if time_choice:
+            where_clauses.append(time_where_clause)
+
+        if len(where_clauses) > 1:
+            where_clause = " AND ".join(where_clauses)
+        else:
+            where_clause = hashtag_where_clause
+
+
+        sql_query = f"""
+        SELECT 
+            text, 
+            retweet_count, 
+            DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) AS date,
+            TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) AS time,
+            id_str_user, 
+            id_str_tweet
+        FROM `msds-417117.Tweets.Tweets`
+        WHERE {where_clause}
+        ORDER BY retweet_count DESC
+        """
+
+        query = client.query(sql_query)
+        result = query.to_dataframe()
+
+        return result
+    
+    ## Search Tweets by Number of retweets 
+    def retweet_search(retweets, choice_and_or, date_and_or, range_choice, time_and_or, time_choice):
+    
+        if choice_and_or == "AND":
+            retweet_where_clause = "AND ".join([f"retweet_count {retweet} " for retweet in retweets])
+        elif choice_and_or == "OR":
+            retweet_where_clause = "OR ".join([f"retweet_count {retweet}" for retweet in retweets])
+        else: 
+            retweet_where_clause = (f"retweet_count {retweets}")
+        
+        if date_and_or == "AND RANGE" or date_and_or == "SINGLE RANGE":
+            date_where_clause = "AND ".join([f"DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in range_choice])
+        elif date_and_or == "OR RANGE":
+            date_where_clause = "OR ".join([f"DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in range_choice])
+        else: 
+            date_where_clause = f"DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {range_choice}"
+
+        if time_and_or == "AND RANGE" or time_and_or == "SINGLE RANGE":
+            time_where_clause = "AND ".join([f"TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in time_choice])
+        elif time_and_or == "OR RANGE":
+            time_where_clause = "OR ".join([f"TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in time_choice])
+        else: 
+            time_where_clause = f"TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {time_choice}"
+
+
+        where_clauses = [retweet_where_clause]
+
+        if range_choice:
+            where_clauses.append(date_where_clause)
+
+        if time_choice:
+            where_clauses.append(time_where_clause)
+
+        if len(where_clauses) > 1:
+            where_clause = " AND ".join(where_clauses)
+        else:
+            where_clause = retweet_where_clause
+
+
+        sql_query = f"""
+        SELECT 
+            text, 
+            retweet_count, 
+            DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) AS date,
+            TIME(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) AS time,
+            id_str_user, 
+            id_str_tweet
+        FROM `msds-417117.Tweets.Tweets`
+        WHERE {where_clause}
+        ORDER BY retweet_count DESC
+        """
+
+        query = client.query(sql_query)
+        result = query.to_dataframe()
+
+        return result
+
+
