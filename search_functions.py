@@ -1,10 +1,44 @@
 # mongodb_search.py
+import os
+### If errors
+# Install db-dtypes package
+#os.system('pip install db-dtypes')
+#os.system('pip install pymongo')
+#os.system('pip install google-cloud-bigquery')
+#os.system('pip install google-auth')
+#os.system('pip install google-auth-oauthlib')
+#os.system('pip install google.cloud')
+#os.system('pip install google.oauth2')
 import pymongo
 from pymongo import MongoClient
 import re
 import heapq
 import time
 import pickle
+import warnings
+from google.cloud import bigquery
+from google.oauth2 import service_account
+from IPython.display import clear_output
+import subprocess
+import time
+
+credentials = service_account.Credentials.from_service_account_info({
+  "type": "service_account",
+  "project_id": "msds-417117",
+  "private_key_id": "b6e22a6ede54ccdd4765660a5ad6bd5edd834fdf",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDD21+UoosPHIEk\nLubzOCdFM7ACqtEZV+ye6orE1VYSGCg+1WseEva3DmmnEap4P89rPhaxuvZa45co\njHkPV24+ArFj3YYLDFk6IT48Cb0IGngGTDZovcR7E5ilEK6CO4o+qYeKpfbRm+/f\nQ17gIRcbhiIT4pM/Gr/HJTXkO5O7OCIkxI6k8oyVGwYRXNfxwG0Cx3AkgS6WOADL\nOt0+e11cL/3XvKS9GV2s0IDEnuaTw8NuSMyuCOTv8w3Kt9BsJ/VQJkmUVe0RElCu\n5EqjXFY/zrmHoRG2RvLKSTfyxluJfJlgin1fEzGh9jUEAObjgTbO+RXpfqmLq4PA\nJnAmHG1fAgMBAAECggEAOf5Dm4HTtjpE/P9MUFlgu2t2IxwMRTpVLKsbQvQ+g6YW\niKBuEt4foo2IeDlRZkDSvJkKZD8NglUgpZeOox3K3V6zwvPNpIjYBM/iGynxCKy5\nvHelprcGLkFbsgix+4sAwNQ297Vz05YeXVgYCDqUGojJn2S4H/feMGwSvI1tjYIp\nYaMEnMlTohaFlRE9LFSID8l7k8JMwUHvs5pAS4WYYToGW6/L98Gcv08T5Ki8mz3x\nsyyYh6VO4AxazS2wr1pqvm64GZhxTlxCM+n4iBeZTxaeVhTZkZhdz6CzzEuLiSO0\nGWaOyf2YL4oBmGY7mJUji+Q7ORofXKp8khbCSmeiHQKBgQDnJo80B7gocMi4f2d/\nYp5dUid3vVYoJoiXC+HcA8faEo+sQTgmMsllY9Ld5ZHMEBDLFG6hFIAz+KQnjGEk\neGP5nvUAGvm+WSpwv8gFH2ujDIAV/2nhv5j/ip8sbPsBnKh+UGAHuxSmm8WvJaVU\nar/KuoFHlv5UqM7fsxOQX4e/VQKBgQDY6YEy6I5VdByxy9WrHwYJOLpB6Al9lI4B\nKOD4jUdigesY4qdnvlqznU+EY0LU5lsXarpIP/fUAZoEc/wHwya0itft/TH0rPLn\nDIUflKBmmQoPew+A4Nc8eMJ28jxberahnx7Qofo6FrJskuu1oZUFuMW6+mtgWKm+\nEKGZ96Sx4wKBgEXZZRS38HJoAn+eIExiJLDWjo6kbFCdtFDQimPN0KqZSUkoPCtu\n1WUKEUJ0iOY9RJXZisSqSUNrM0+wH/rBVpSr8CUkAav/jc+cZHkH0aLnuBztnbVW\nDInL/eWS2RbXnCLvbtVnNwpRsB8JJTipOWOtkDtt6VTz3e/DUXojJAYxAoGBAJns\niXxAvtAxBzO7+7Hk3/mnQbUHHcT5qBN2mL6IMsHag6QzIqxhzidrWEQP1BsUJEvn\ntq0Sh6DwSgUi8RPpDgxMApKle8+u8ue2YLlaVMC5lQQLRaMk6lfFMeoKV35rBDKI\noetXJiQWeyLE13MaaI+Y4OegUJYcFMgFMUf7DeoVAoGAGLv40xyQ/soHdjKgtNJh\ntpPkNPudZsEvnMSR91XOZM4F/D7R15Ck9gZrMf0d7Qpz/nnMANgVt3DGyqx7CO4p\na/CpGLVPMSbhKmRMEdJCFvwBOYvsi3THN3rHoe69qkfGiMg3lx0hPGC2FFzY6ylW\npbS1yN/tpjmBYjUhSdhWgMM=\n-----END PRIVATE KEY-----\n",
+  "client_email": "python@msds-417117.iam.gserviceaccount.com",
+  "client_id": "105118685802142068024",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/python%40msds-417117.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
+)
+
+project_id = 'msds-417117'
+client = bigquery.Client(credentials= credentials,project=project_id)
 
 class SearchInMongoDB:  ##Mayukh Sen 
     def __init__(self, uri, collection_name):
