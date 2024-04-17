@@ -125,3 +125,4 @@ dependencies:
       - requests==2.31.0
       - rsa==4.9
       - urllib3==2.2.1
+      - db_dtypes==0.0.1
