@@ -78,6 +78,23 @@ class SearchInMongoDB:  ##Mayukh Sen
 
     def close_connection(self):
         self.client.close()
+    
+    def search_by_id_list(self, id_str_list):
+        projection = {"name": 1, "followers_count": 1, "id_str": 1, "_id": 0}
+        
+        # Construct a single query to fetch data for all id_str values
+        query = {"id_str": {"$in": id_str_list}}
+        fetched = self.collection.find(query, projection)
+        
+        # Initialize a dictionary to store names and followers counts
+        data_dict = {}
+        
+        # Iterate through the results and populate the dictionary
+        for fetch in fetched:
+            id_str = fetch["id_str"]  # Access the correct field name
+            data_dict[id_str] = {"name": fetch["name"], "followers_count": fetch["followers_count"]}
+        
+        return data_dict
 
 
 ############################################################################################################################################################################
@@ -121,7 +138,10 @@ class SearchCache: ##Divya Shah
 ############################################################################################################################################################################
 
 class SearchTweets: ## Max Jacobs
-    def string_search(words, choice_and_or, date_and_or, range_choice, time_and_or, time_choice):
+    def __init__(self):
+        self.mongo_search_instance = SearchInMongoDB("mongodb+srv://mayukhsen1301:usRxjAPcR6KpCC3Z@cluster0.4hvj9hx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", "users")
+        
+    def string_search(self, words, choice_and_or, date_and_or, range_choice, time_and_or, time_choice):
     #Search By Text
         if choice_and_or == "AND":
             text_where_clause = "AND ".join([f"text LIKE '% {word} %'" for word in words])
@@ -171,21 +191,41 @@ class SearchTweets: ## Max Jacobs
         WHERE {where_clause}
         ORDER BY retweet_count DESC
         """
-
+        start_time = time.time()
         query = client.query(sql_query)
+        end_time = time.time()
+        execution_time1 = end_time - start_time
+        
         result = query.to_dataframe()
 
+        start_time = time.time()
+        data_dict = self.mongo_search_instance.search_by_id_list(result['id_str_user'].tolist())
+        end_time = time.time()
+        execution_time2 = end_time - start_time
+        
+        result['username'] = result['id_str_user'].map(lambda id_str: data_dict[id_str]['name'])
+        result['followers'] = result['id_str_user'].map(lambda id_str: data_dict[id_str]['followers_count'])
+
+        execution_time = execution_time1 + execution_time2        
+
+        print("\n" + "################################################")
+        print("\n" + f"Execution time without cache: {execution_time} seconds")
+        print("\n" + "################################################")
+        
+        columns_order = ['username', 'followers', 'text', 'retweet_count', 'date', 'time', 'id_str_user', 'id_str_tweet']
+        result = result.reindex(columns=columns_order)
+        
         return result
 
     ## Search Tweets by Hashtags
-    def hashtag_search(hashtags, choice_and_or, date_and_or, range_choice, time_and_or, time_choice):
+    def hashtag_search(self, hashtags, choice_and_or, date_and_or, range_choice, time_and_or, time_choice):
     
         if choice_and_or == "AND":
-            hashtag_where_clause = "AND ".join([f"text LIKE '% {hashtag} %'" for hashtag in hashtags])
+            hashtag_where_clause = "AND ".join([f"hashtags LIKE '% {hashtag}%'" for hashtag in hashtags])
         elif choice_and_or == "OR":
-            hashtag_where_clause = "OR ".join([f"text LIKE '% {hashtag} %'" for hashtag in hashtags])
+            hashtag_where_clause = "OR ".join([f"hashtags LIKE '% {hashtag}%'" for hashtag in hashtags])
         else: 
-            hashtag_where_clause = (f"text LIKE '% {hashtags} %'")
+            hashtag_where_clause = (f"hashtags LIKE '% {hashtags}%'")
         
         if date_and_or == "AND RANGE" or date_and_or == "SINGLE RANGE":
             date_where_clause = "AND ".join([f"DATE(PARSE_TIMESTAMP('%a %b %d %T %z %Y', created_at)) {condition}" for condition in range_choice])
@@ -229,13 +269,34 @@ class SearchTweets: ## Max Jacobs
         ORDER BY retweet_count DESC
         """
 
+        start_time = time.time()
         query = client.query(sql_query)
+        end_time = time.time()
+        execution_time1 = end_time - start_time
+        
         result = query.to_dataframe()
 
+        start_time = time.time()
+        data_dict = self.mongo_search_instance.search_by_id_list(result['id_str_user'].tolist())
+        end_time = time.time()
+        execution_time2 = end_time - start_time
+        
+        result['username'] = result['id_str_user'].map(lambda id_str: data_dict[id_str]['name'])
+        result['followers'] = result['id_str_user'].map(lambda id_str: data_dict[id_str]['followers_count'])
+
+        execution_time = execution_time1 + execution_time2 
+        
+        print("\n" + "################################################")
+        print("\n" + f"Execution time without cache: {execution_time} seconds")
+        print("\n" + "################################################")
+
+        columns_order = ['username', 'followers', 'text', 'retweet_count', 'date', 'time', 'id_str_user', 'id_str_tweet']
+        result = result.reindex(columns=columns_order)
+        
         return result
     
     ## Search Tweets by Number of retweets 
-    def retweet_search(retweets, choice_and_or, date_and_or, range_choice, time_and_or, time_choice):
+    def retweet_search(self, retweets, choice_and_or, date_and_or, range_choice, time_and_or, time_choice):
     
         if choice_and_or == "AND":
             retweet_where_clause = "AND ".join([f"retweet_count {retweet} " for retweet in retweets])
@@ -286,8 +347,29 @@ class SearchTweets: ## Max Jacobs
         ORDER BY retweet_count DESC
         """
 
+        start_time = time.time()
         query = client.query(sql_query)
+        end_time = time.time()
+        execution_time1 = end_time - start_time
+        
         result = query.to_dataframe()
+
+        start_time = time.time()
+        data_dict = self.mongo_search_instance.search_by_id_list(result['id_str_user'].tolist())
+        end_time = time.time()
+        execution_time2 = end_time - start_time
+        
+        result['username'] = result['id_str_user'].map(lambda id_str: data_dict[id_str]['name'])
+        result['followers'] = result['id_str_user'].map(lambda id_str: data_dict[id_str]['followers_count'])
+
+        execution_time = execution_time1 + execution_time2 
+        
+        print("\n" + "################################################")
+        print("\n" + f"Execution time without cache: {execution_time} seconds")
+        print("\n" + "################################################")
+        
+        columns_order = ['username', 'followers', 'text', 'retweet_count', 'date', 'time', 'id_str_user', 'id_str_tweet']
+        result = result.reindex(columns=columns_order)
 
         return result
 
