@@ -82,16 +82,12 @@ class SearchInMongoDB:  ##Mayukh Sen
     def search_by_id_list(self, id_str_list):
         projection = {"name": 1, "followers_count": 1, "id_str": 1, "_id": 0}
         
-        # Construct a single query to fetch data for all id_str values
         query = {"id_str": {"$in": id_str_list}}
         fetched = self.collection.find(query, projection)
-        
-        # Initialize a dictionary to store names and followers counts
         data_dict = {}
         
-        # Iterate through the results and populate the dictionary
         for fetch in fetched:
-            id_str = fetch["id_str"]  # Access the correct field name
+            id_str = fetch["id_str"]  
             data_dict[id_str] = {"name": fetch["name"], "followers_count": fetch["followers_count"]}
         
         return data_dict
