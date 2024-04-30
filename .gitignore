@@ -10,6 +10,7 @@ scratch.ipynb
 mongo_users.ipynb
 mongo_uri.txt
 users.csv
+credentials.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
